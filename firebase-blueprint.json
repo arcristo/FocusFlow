@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A productivity task with priority, category, time estimation, and completion tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the task (1-120 characters)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional notes or details (max 1000 characters)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"],
+          "description": "Task urgency / priority level"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["TRABALHO", "ESTUDO", "PESSOAL", "SAUDE", "FINANCAS", "OUTRO"],
+          "description": "Productivity category"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the task is finished"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Due date formatted string"
+        },
+        "estimatedMinutes": {
+          "type": "integer",
+          "description": "Estimated time to complete in minutes"
+        },
+        "focusTimeSpentMinutes": {
+          "type": "integer",
+          "description": "Total focused minutes logged on this task"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update"
+        }
+      },
+      "required": ["userId", "title", "priority", "category", "completed", "createdAt"]
+    },
+    "FocusSession": {
+      "title": "FocusSession",
+      "description": "A deep work or Pomodoro focus timer session logged by the user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "taskId": {
+          "type": "string",
+          "description": "Associated task ID if any"
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "description": "Duration of the focus session in minutes"
+        },
+        "sessionType": {
+          "type": "string",
+          "enum": ["POMODORO", "SHORT_BREAK", "LONG_BREAK"],
+          "description": "Type of focus interval"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the session finished to the end"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes captured during focus session"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update"
+        }
+      },
+      "required": ["userId", "durationMinutes", "sessionType", "completed", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/Task"
+      },
+      "description": "Scoped collection of tasks belonging to a specific user."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/FocusSession"
+      },
+      "description": "Scoped collection of focus sessions belonging to a specific user."
+    }
+  }
+}

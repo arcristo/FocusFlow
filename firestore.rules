@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTask(data, uid) {
+      return data.userId == uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             data.priority in ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] &&
+             data.category in ['TRABALHO', 'ESTUDO', 'PESSOAL', 'SAUDE', 'FINANCAS', 'OUTRO'] &&
+             data.completed is bool &&
+             (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 50)) &&
+             (!('estimatedMinutes' in data) || (data.estimatedMinutes is int && data.estimatedMinutes >= 0 && data.estimatedMinutes <= 1440)) &&
+             (!('focusTimeSpentMinutes' in data) || (data.focusTimeSpentMinutes is int && data.focusTimeSpentMinutes >= 0)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidFocusSession(data, uid) {
+      return data.userId == uid &&
+             (!('taskId' in data) || (data.taskId is string && data.taskId.size() <= 128)) &&
+             data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 240 &&
+             data.sessionType in ['POMODORO', 'SHORT_BREAK', 'LONG_BREAK'] &&
+             data.completed is bool &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    // User-scoped collections
+    match /users/{userId} {
+      // User must be signed in and match path
+      allow get: if isSignedIn() && request.auth.uid == userId;
+
+      // Tasks subcollection
+      match /tasks/{taskId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(taskId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(taskId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidTask(incoming(), userId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'priority', 'category', 'completed', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'description', 'priority', 'category', 'completed', 'dueDate', 'estimatedMinutes', 'focusTimeSpentMinutes', 'createdAt', 'updatedAt']);
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(taskId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTask(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'priority', 'category', 'completed', 'dueDate', 'estimatedMinutes', 'focusTimeSpentMinutes', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(taskId);
+      }
+
+      // Sessions subcollection
+      match /sessions/{sessionId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(sessionId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidFocusSession(incoming(), userId) &&
+                         incoming().keys().hasAll(['userId', 'durationMinutes', 'sessionType', 'completed', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'taskId', 'durationMinutes', 'sessionType', 'completed', 'notes', 'createdAt', 'updatedAt']);
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(sessionId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidFocusSession(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['durationMinutes', 'sessionType', 'completed', 'notes', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId);
+      }
+    }
+  }
+}

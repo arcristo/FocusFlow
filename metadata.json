@@ -1,0 +1,6 @@
+{
+  "name": "FocusFlow",
+  "description": "Gerenciador de tarefas e produtividade pessoal com foco, categorização e acompanhamento de metas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
